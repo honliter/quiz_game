@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ quiz.title }} | Онлайн-вікторина{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <span class="badge bg-primary mb-2">Код: {{ quiz.invite_code }}</span>
+        <h2>{{ quiz.title }}</h2>
+        <p><strong>Категорія:</strong> {{ quiz.get_category_display }} · <strong>Складність:</strong> {{ quiz.get_difficulty_display }}</p>
+        <p class="text-muted">{{ quiz.description|default:'Опис відсутній' }}</p>
+        <p><strong>Створив:</strong> {{ quiz.created_by.username }}</p>
+        <p><strong>Запитань:</strong> {{ quiz.questions.count }}</p>
+
+        {% if show_results and attempt %}
+        <div class="alert alert-info mt-3">
+            <strong>Результат:</strong> ви набрали {{ attempt.score }} з {{ quiz.questions.count }} балів.
+            <br><strong>Нагорода:</strong> +{{ attempt.coins_earned }} Quiz Coins
+        </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            {% for item in question_results %}
+            <section class="border rounded p-3 mb-3">
+                <h3 class="h5">{{ forloop.counter }}. {{ item.question.prompt }}</h3>
+                {% for answer in item.answers %}
+                <div class="form-check mb-2">
+                    <input
+                        class="form-check-input"
+                        type="radio"
+                        name="question_{{ item.question.id }}"
+                        id="question_{{ item.question.id }}_answer_{{ answer.id }}"
+                        value="{{ answer.id }}"
+                        {% if item.selected_answer_id == answer.id %}checked{% endif %}
+                        {% if show_results %}disabled{% endif %}
+                    >
+                    <label class="form-check-label" for="question_{{ item.question.id }}_answer_{{ answer.id }}">
+                        {{ answer.text }}
+                    </label>
+                    {% if show_results and answer.is_correct %}
+                    <span class="badge bg-success ms-2">Правильна відповідь</span>
+                    {% endif %}
+                    {% if show_results and item.selected_answer_id == answer.id and not answer.is_correct %}
+                    <span class="badge bg-danger ms-2">Ваш вибір</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                {% if show_results %}
+                    {% if item.was_not_answered %}
+                    <div class="text-warning mt-2">Ви не обрали варіант для цього питання. Правильна відповідь: {{ item.correct_answer.text }}</div>
+                    {% elif not item.is_correct %}
+                    <div class="text-danger mt-2">Не вгадав. Правильна відповідь: {{ item.correct_answer.text }}</div>
+                    {% endif %}
+                {% endif %}
+            </section>
+            {% endfor %}
+            {% if not show_results %}
+            <button type="submit" class="btn btn-primary">Завершити вікторину</button>
+            {% else %}
+                {% if next_level and next_level_unlocked %}
+                <a href="{% url 'quiz_detail' next_level.id %}" class="btn btn-primary">Продовжити</a>
+                {% endif %}
+                <a href="{% url 'join_quiz' quiz.id %}" class="btn btn-outline-primary">Пройти ще раз</a>
+                <a href="{% url 'home' %}" class="btn btn-outline-danger">Вийти</a>
+            {% endif %}
+        </form>
+
+        {% if not show_results %}
+        <a href="{% url 'join_quiz' quiz.id %}" class="btn btn-outline-secondary mt-3">Приєднатися до гри</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

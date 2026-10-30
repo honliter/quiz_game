@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+
+{% block title %}Створення вікторини | Онлайн-вікторина{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <h2 class="mb-4">Створити нову вікторину</h2>
+        <form method="post">
+            {% csrf_token %}
+            {% if errors %}
+            <div class="alert alert-danger" role="alert">
+                {% for error in errors %}<p class="mb-1">{{ error }}</p>{% endfor %}
+            </div>
+            {% endif %}
+            <div class="mb-3">
+                <label class="form-label">Назва вікторини</label>
+                <input type="text" name="title" class="form-control" value="{{ request.POST.title }}" maxlength="200" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Опис</label>
+                <textarea name="description" class="form-control" rows="4"></textarea>
+            </div>
+            <div class="mb-3">
+                <label for="category" class="form-label">Категорія</label>
+                <select id="category" name="category" class="form-select">
+                    {% for value, label in categories %}
+                    <option value="{{ value }}" {% if selected_category == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="difficulty" class="form-label">Складність</label>
+                <select id="difficulty" name="difficulty" class="form-select">
+                    {% for value, label in difficulties %}
+                    <option value="{{ value }}" {% if selected_difficulty == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <small class="text-muted">Для рівнів 2+ складність автоматично стає складною.</small>
+            </div>
+            <div class="mb-3">
+                <label for="level_number" class="form-label">Рівень кампанії</label>
+                <input id="level_number" type="number" name="level_number" class="form-control" min="1" max="50" value="{{ selected_level_number|default:1 }}" required>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="h5 mb-0">Питання</h3>
+                <button type="button" id="add-question" class="btn btn-outline-primary">Додати питання</button>
+            </div>
+            <input type="hidden" id="question-count" name="question_count" value="{{ question_count }}">
+            <div id="questions-list">
+                {% for question in question_rows %}
+                <section class="question-item border rounded p-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="h6 mb-0">Питання <span class="question-number">{{ forloop.counter }}</span></h4>
+                        <button type="button" class="remove-question btn btn-outline-danger btn-sm">Видалити</button>
+                    </div>
+                    <div class="mb-3">
+                        <label for="question-{{ forloop.counter0 }}-prompt" class="form-label">Текст питання</label>
+                        <input id="question-{{ forloop.counter0 }}-prompt" type="text" name="question_{{ forloop.counter0 }}_prompt" class="form-control" value="{{ question.prompt }}" maxlength="500" required>
+                    </div>
+                    {% for answer in question.answers %}
+                    <div class="row align-items-end mb-2">
+                        <div class="col">
+                            <label for="question-{{ forloop.parentloop.counter0 }}-answer-{{ forloop.counter0 }}" class="form-label">Варіант {{ forloop.counter }}</label>
+                            <input id="question-{{ forloop.parentloop.counter0 }}-answer-{{ forloop.counter0 }}" type="text" name="question_{{ forloop.parentloop.counter0 }}_answer_{{ forloop.counter0 }}" class="form-control" value="{{ answer }}" maxlength="255" required>
+                        </div>
+                        <div class="col-auto">
+                            <label class="form-check mb-2">
+                                <input type="radio" name="question_{{ forloop.parentloop.counter0 }}_correct" value="{{ forloop.counter0 }}" class="form-check-input" {% if question.correct == forloop.counter0 %}checked{% endif %} required>
+                                <span class="form-check-label">Правильна</span>
+                            </label>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </section>
+                {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-primary">Зберегти</button>
+        </form>
+    </div>
+</div>
+<template id="question-template">
+    <section class="question-item border rounded p-3 mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="h6 mb-0">Питання <span class="question-number">__NUMBER__</span></h4>
+            <button type="button" class="remove-question btn btn-outline-danger btn-sm">Видалити</button>
+        </div>
+        <div class="mb-3">
+            <label for="question-__INDEX__-prompt" class="form-label">Текст питання</label>
+            <input id="question-__INDEX__-prompt" type="text" name="question___INDEX___prompt" class="form-control" maxlength="500" required>
+        </div>
+        {% for answer_index in answer_slots %}
+        <div class="row align-items-end mb-2">
+            <div class="col">
+                <label for="question-__INDEX__-answer-{{ answer_index }}" class="form-label">Варіант {{ forloop.counter }}</label>
+                <input id="question-__INDEX__-answer-{{ answer_index }}" type="text" name="question___INDEX___answer_{{ answer_index }}" class="form-control" maxlength="255" required>
+            </div>
+            <div class="col-auto">
+                <label class="form-check mb-2">
+                    <input type="radio" name="question___INDEX___correct" value="{{ answer_index }}" class="form-check-input" required>
+                    <span class="form-check-label">Правильна</span>
+                </label>
+            </div>
+        </div>
+        {% endfor %}
+    </section>
+</template>
+<script>
+    const questionsList = document.getElementById('questions-list');
+    const questionCount = document.getElementById('question-count');
+    const questionTemplate = document.getElementById('question-template');
+
+    function updateQuestionIndexes() {
+        const questionItems = questionsList.querySelectorAll('.question-item');
+        questionItems.forEach((item, index) => {
+            item.querySelector('.question-number').textContent = index + 1;
+            item.querySelectorAll('[name]').forEach((field) => {
+                field.name = field.name.replace(/question_\d+_/, `question_${index}_`);
+            });
+            item.querySelectorAll('[id]').forEach((field) => {
+                field.id = field.id.replace(/question-\d+-/, `question-${index}-`);
+            });
+            item.querySelectorAll('label[for]').forEach((label) => {
+                label.htmlFor = label.htmlFor.replace(/question-\d+-/, `question-${index}-`);
+            });
+            item.querySelector('.remove-question').disabled = questionItems.length === 1;
+        });
+        questionCount.value = questionItems.length;
+    }
+
+    document.getElementById('add-question').addEventListener('click', () => {
+        if (questionsList.children.length >= 50) return;
+        const index = questionsList.children.length;
+        const markup = questionTemplate.innerHTML
+            .replaceAll('__INDEX__', index)
+            .replaceAll('__NUMBER__', index + 1);
+        questionsList.insertAdjacentHTML('beforeend', markup);
+        updateQuestionIndexes();
+    });
+
+    questionsList.addEventListener('click', (event) => {
+        const removeButton = event.target.closest('.remove-question');
+        if (removeButton && questionsList.children.length > 1) {
+            removeButton.closest('.question-item').remove();
+            updateQuestionIndexes();
+        }
+    });
+
+    updateQuestionIndexes();
+</script>
+{% endblock %}

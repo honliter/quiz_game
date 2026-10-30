@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Профіль | Онлайн-вікторина{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-body text-center">
+                <img src="{{ profile.avatar|default:'https://via.placeholder.com/150' }}" class="rounded-circle mb-3" width="120" height="120" alt="avatar">
+                <h3>{{ user.username }}</h3>
+                <p class="text-muted">{{ profile.bio|default:'Немає біографії' }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body">
+                <h4>Особисті дані</h4>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">Email: {{ user.email|default:'Не вказано' }}</li>
+                    <li class="list-group-item">Дата реєстрації: {{ user.date_joined|date:'d.m.Y' }}</li>
+                    <li class="list-group-item">Кількість створених вікторин: {{ user.quizzes.count }}</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-4 quiz-wallet">
+            <div class="card-body">
+                <div class="text-muted small">Баланс Quiz Coins</div>
+                <h3 class="mb-1 mt-2">{{ profile.quiz_coins }}</h3>
+                <div class="text-muted small">Отримуйте 10 монет за кожну правильну відповідь.</div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Спроби</div>
+                        <h4 class="mb-0 mt-2">{{ stats.total_attempts }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Завершених</div>
+                        <h4 class="mb-0 mt-2">{{ stats.completed_attempts }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Рекорд</div>
+                        <h4 class="mb-0 mt-2">{{ stats.best_score }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0 mt-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0">Останні результати</h4>
+            <span class="badge bg-primary rounded-pill">Середня точність: {{ stats.average_accuracy }}%</span>
+        </div>
+
+        {% if recent_attempts %}
+            <div class="list-group list-group-flush">
+                {% for attempt in recent_attempts %}
+                    <div class="list-group-item px-0">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ attempt.quiz.title }}</strong>
+                                <div class="text-muted small">{{ attempt.completed_at|date:'d.m.Y H:i' }}</div>
+                            </div>
+                            <span class="badge {% if attempt.accuracy >= 60 %}bg-success{% elif attempt.accuracy >= 30 %}bg-warning text-dark{% else %}bg-danger{% endif %} rounded-pill">
+                                {{ attempt.score }} / {{ attempt.quiz.questions.count }} · {{ attempt.accuracy }}%
+                            </span>
+                        </div>
+                        <div class="text-muted small mt-1">Зароблено: {{ attempt.coins_earned }} Quiz Coins</div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-muted">Поки немає завершених вікторин.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
